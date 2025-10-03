@@ -19,3 +19,4 @@ dist/
 # Dotfiles
 .env
 .envrc
+.github/
