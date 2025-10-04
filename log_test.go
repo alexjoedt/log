@@ -435,6 +435,28 @@ func TestTimestampFormat(t *testing.T) {
 	}
 }
 
+func TestWithoutTimestamp(t *testing.T) {
+	buf := &bytes.Buffer{}
+	logger := New(
+		WithWriter(buf),
+		WithFormat(FormatConsole),
+		WithoutTimestamp(),
+	)
+
+	logger.Info("test message")
+
+	output := buf.String()
+	// Verify the message is logged
+	if !strings.Contains(output, "test message") {
+		t.Errorf("Expected output to contain 'test message', got: %s", output)
+	}
+	// Verify the output doesn't contain timestamp patterns like "2024" or typical RFC3339 patterns
+	// The default timestamp format is RFC3339, so we check for "T" which appears in RFC3339
+	if strings.Contains(output, "T") && strings.Count(output, ":") >= 2 {
+		t.Errorf("Expected output to not contain timestamp, but got: %s", output)
+	}
+}
+
 func TestErrorWithError(t *testing.T) {
 	logger, hook := NewTestLogger()
 

@@ -148,6 +148,7 @@ logger := log.New(
     log.WithFormat(log.FormatJSON),              // Set output format
     log.WithWriter(os.Stdout),                   // Set output writer
     log.WithTimestampFormat(time.RFC3339Nano),   // Custom timestamp format
+    log.WithoutTimestamp(),                      // Disable timestamp output
     log.WithCaller(),                            // Enable caller info (file:line)
     log.WithCallerSkip(2),                       // Adjust caller depth
     log.WithDefaultFields("key", "value"),       // Add default fields

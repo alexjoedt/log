@@ -75,7 +75,7 @@ func (h *consoleHandler) Handle(_ context.Context, r slog.Record) error {
 	buf := make([]byte, 0, 1024)
 
 	// Timestamp
-	if h.config.TimestampFormat != "" {
+	if !h.config.DisableTimestamp && h.config.TimestampFormat != "" {
 		timestamp := r.Time.Format(h.config.TimestampFormat)
 		if h.useColors {
 			buf = append(buf, colorGray...)

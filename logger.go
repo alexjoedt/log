@@ -28,6 +28,7 @@ type Config struct {
 	Format           Format
 	Writer           io.Writer
 	TimestampFormat  string
+	DisableTimestamp bool
 	ShowCaller       bool
 	CallerSkip       int
 	DefaultFields    []any
@@ -104,6 +105,13 @@ func WithWriters(writers ...io.Writer) Option {
 func WithTimestampFormat(format string) Option {
 	return func(c *Config) {
 		c.TimestampFormat = format
+	}
+}
+
+// WithoutTimestamp disables timestamp output in logs.
+func WithoutTimestamp() Option {
+	return func(c *Config) {
+		c.DisableTimestamp = true
 	}
 }
 
