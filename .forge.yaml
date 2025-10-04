@@ -1,0 +1,23 @@
+# Forge Configuration
+# This file configures the forge CLI tool for managing releases, builds, and Docker images.
+
+version:
+  # Version scheme: "semver" (semantic versioning) or "calver" (calendar versioning)
+  scheme: semver
+  
+  # Prefix for git tags (e.g., "v" creates tags like "v1.2.3")
+  prefix: v
+  
+  # Prerelease identifier (e.g., "rc.1", "beta.2")
+  pre: ""
+  
+  # Build metadata (e.g., "build.123")
+  meta: ""
+
+
+git:
+  # Tag prefix (e.g., "v")
+  tag_prefix: v
+  
+  # Default branch name
+  default_branch: main
