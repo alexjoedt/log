@@ -45,11 +45,11 @@ func main() {
 	errorTracker := &ErrorTracker{}
 
 	// Create logger with hooks
-	logger := log.New().
-		WithLevel(log.DEBUG).
-		WithHook(createMetricsHook(metrics)).
-		WithHook(createErrorTrackingHook(errorTracker)).
-		Build()
+	logger := log.New(
+		log.WithLevel(log.DEBUG),
+		log.WithHook(createMetricsHook(metrics)),
+		log.WithHook(createErrorTrackingHook(errorTracker)),
+	)
 
 	log.SetDefault(logger)
 

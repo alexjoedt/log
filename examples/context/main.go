@@ -11,10 +11,10 @@ import (
 
 func main() {
 	// Create base logger
-	logger := log.New().
-		WithLevel(log.DEBUG).
-		WithDefaultFields("app", "context-demo").
-		Build()
+	logger := log.New(
+		log.WithLevel(log.DEBUG),
+		log.WithDefaultFields("app", "context-demo"),
+	)
 
 	// Attach logger to context
 	ctx := log.ContextWithLogger(context.Background(), logger)

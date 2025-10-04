@@ -62,23 +62,30 @@ func getEnvInt(key string, defaultValue int) int {
 	return defaultValue
 }
 
-// FromEnv creates a logger builder with configuration from environment variables.
+// FromEnv creates a logger with configuration from environment variables.
 // Supported environment variables:
 //   - LOG_LEVEL: trace, debug, info, warn, error, fatal (default: info)
 //   - LOG_FORMAT: json, text, console (default: console)
 //   - LOG_CALLER: true/false - enable caller info (default: false)
 //   - LOG_CALLER_SKIP: number - adjust caller depth (default: 2)
-func FromEnv() *Builder {
-	b := New()
+func FromEnv() *Logger {
+	var opts []Option
 
-	b.config.Level = getDefaultLevel()
-	b.config.Format = getDefaultFormat()
-	b.config.ShowCaller = getEnvBool("LOG_CALLER", false)
-	b.config.CallerSkip = getEnvInt("LOG_CALLER_SKIP", 2)
+	// Level is already set via getDefaultLevel() in New()
+	// Format is already set via getDefaultFormat() in New()
 
-	if timestampFormat := os.Getenv("LOG_TIMESTAMP_FORMAT"); timestampFormat != "" {
-		b.config.TimestampFormat = timestampFormat
+	if getEnvBool("LOG_CALLER", false) {
+		opts = append(opts, WithCaller())
 	}
 
-	return b
+	callerSkip := getEnvInt("LOG_CALLER_SKIP", 2)
+	if callerSkip != 2 {
+		opts = append(opts, WithCallerSkip(callerSkip))
+	}
+
+	if timestampFormat := os.Getenv("LOG_TIMESTAMP_FORMAT"); timestampFormat != "" {
+		opts = append(opts, WithTimestampFormat(timestampFormat))
+	}
+
+	return New(opts...)
 }

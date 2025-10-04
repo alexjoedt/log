@@ -78,7 +78,7 @@ var (
 
 func init() {
 	// Initialize default logger with sensible defaults
-	defaultLogger = New().Build()
+	defaultLogger = New()
 	exitHandler = func(code int) {
 		os.Exit(code)
 	}

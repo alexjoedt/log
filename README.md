@@ -11,7 +11,7 @@ A production-ready logging package for Go that wraps `slog` (Go 1.21+) with enha
 ✨ **Beautiful Console Output** - Auto-detects TTY with color-coded log levels  
 📊 **Multiple Formats** - Console, JSON, and Text formats  
 🎯 **Six Log Levels** - TRACE, DEBUG, INFO, WARN, ERROR, FATAL  
-🔧 **Fluent Builder API** - Intuitive configuration with method chaining  
+🔧 **Functional Options API** - Intuitive configuration with option functions  
 🔄 **Log Rotation** - Automatic rotation by size, age, and backup count  
 📦 **Buffered Writing** - Configurable buffering with auto-flush  
 🎣 **Hooks System** - Pre-log hooks for integration (Sentry, metrics, etc.)  
@@ -61,12 +61,12 @@ log.Fatal("critical failure") // logs and exits with code 1
 ### Creating Custom Loggers
 
 ```go
-// Build a custom logger
-logger := log.New().
-    WithLevel(log.DEBUG).
-    WithFormat(log.FormatJSON).
-    WithDefaultFields("service", "api", "version", "1.0.0").
-    Build()
+// Create a custom logger with options
+logger := log.New(
+    log.WithLevel(log.DEBUG),
+    log.WithFormat(log.FormatJSON),
+    log.WithDefaultFields("service", "api", "version", "1.0.0"),
+)
 
 // Set as default
 log.SetDefault(logger)
@@ -124,9 +124,9 @@ time=2024-10-03T10:15:30Z level=INFO msg="application started" service=api versi
 
 ```go
 // Create logger with default fields
-logger := log.New().
-    WithDefaultFields("app", "myapp", "env", "prod").
-    Build()
+logger := log.New(
+    log.WithDefaultFields("app", "myapp", "env", "prod"),
+)
 
 // Add fields to specific logger instance (immutable pattern)
 requestLogger := logger.WithFields(
@@ -140,18 +140,18 @@ requestLogger.Info("processing request")
 
 ### Configuration Options
 
-#### Builder Methods
+#### Option Functions
 
 ```go
-logger := log.New().
-    WithLevel(log.DEBUG).                    // Set minimum log level
-    WithFormat(log.FormatJSON).              // Set output format
-    WithWriter(os.Stdout).                   // Set output writer
-    WithTimestampFormat(time.RFC3339Nano).   // Custom timestamp format
-    WithCaller().                            // Enable caller info (file:line)
-    WithCallerSkip(2).                       // Adjust caller depth
-    WithDefaultFields("key", "value").       // Add default fields
-    Build()
+logger := log.New(
+    log.WithLevel(log.DEBUG),                    // Set minimum log level
+    log.WithFormat(log.FormatJSON),              // Set output format
+    log.WithWriter(os.Stdout),                   // Set output writer
+    log.WithTimestampFormat(time.RFC3339Nano),   // Custom timestamp format
+    log.WithCaller(),                            // Enable caller info (file:line)
+    log.WithCallerSkip(2),                       // Adjust caller depth
+    log.WithDefaultFields("key", "value"),       // Add default fields
+)
 ```
 
 #### Environment Variables
@@ -168,7 +168,7 @@ export LOG_TIMESTAMP_FORMAT=RFC3339 # Timestamp format
 
 ```go
 // Create logger from environment
-logger := log.FromEnv().Build()
+logger := log.FromEnv()
 ```
 
 ### Advanced Features
@@ -178,14 +178,14 @@ logger := log.FromEnv().Build()
 Automatically rotate logs based on size, age, and backup count:
 
 ```go
-logger := log.New().
-    WithRotation(
+logger := log.New(
+    log.WithRotation(
         100,  // MaxSize: 100 MB
         7,    // MaxBackups: keep 7 old files
         30,   // MaxAge: 30 days
         true, // Compress: gzip old files
-    ).
-    Build()
+    ),
+)
 ```
 
 #### Sampling
@@ -193,12 +193,12 @@ logger := log.New().
 Reduce log volume by sampling (useful for high-frequency logs):
 
 ```go
-logger := log.New().
-    WithSampling(
+logger := log.New(
+    log.WithSampling(
         100,  // Log first 100 messages
         100,  // Then log every 100th message
-    ).
-    Build()
+    ),
+)
 ```
 
 #### Buffered Writing
@@ -206,12 +206,12 @@ logger := log.New().
 Buffer logs for better performance with periodic flushing:
 
 ```go
-logger := log.New().
-    WithBuffer(
+logger := log.New(
+    log.WithBuffer(
         8192,                    // 8KB buffer
         100*time.Millisecond,    // Flush every 100ms
-    ).
-    Build()
+    ),
+)
 // Automatically flushes on ERROR and FATAL
 ```
 
@@ -220,13 +220,13 @@ logger := log.New().
 Write logs to multiple destinations simultaneously:
 
 ```go
-logger := log.New().
-    WithWriters(
+logger := log.New(
+    log.WithWriters(
         os.Stdout,
         fileWriter,
         networkWriter,
-    ).
-    Build()
+    ),
+)
 ```
 
 #### Hooks
@@ -243,12 +243,12 @@ log.RegisterHook(func(entry *log.Entry) error {
 })
 
 // Per-logger hook
-logger := log.New().
-    WithHook(func(entry *log.Entry) error {
+logger := log.New(
+    log.WithHook(func(entry *log.Entry) error {
         metrics.IncrementCounter("logs", entry.Level.String())
         return nil
-    }).
-    Build()
+    }),
+)
 ```
 
 #### Context Integration
@@ -319,7 +319,7 @@ log.SetExitHandler(func(code int) {
 Access the underlying `*slog.Logger` for compatibility:
 
 ```go
-logger := log.New().Build()
+logger := log.New()
 slogLogger := logger.Slog()
 // Use with any library that expects *slog.Logger
 ```
@@ -347,11 +347,11 @@ See the [examples](examples/) directory for complete working examples:
 ## Best Practices
 
 1. **Use package-level functions for simple cases**: `log.Info()`, `log.Error()`, etc.
-2. **Create custom loggers for services**: Configure once, use throughout the service
+2. **Create custom loggers for services**: Configure once with options, use throughout the service
 3. **Add context fields**: Use `WithFields()` to add request IDs, user IDs, etc.
 4. **Check levels for expensive operations**: Use `IsDebugEnabled()` before expensive computations
 5. **Use JSON format in production**: Better for log aggregation and parsing
-6. **Enable caller info for debugging**: Use `WithCaller()` during development
+6. **Enable caller info for debugging**: Use `WithCaller()` option during development
 7. **Set up log rotation**: Prevent disk space issues in production
 8. **Use hooks for integrations**: Integrate with Sentry, metrics, etc.
 9. **Test with TestLogger**: Capture and assert on logs in unit tests

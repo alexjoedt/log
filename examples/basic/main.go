@@ -24,9 +24,9 @@ func main() {
 	log.Warn("high memory usage detected", "usage_percent", 85)
 
 	// Create a custom logger with DEBUG level
-	logger := log.New().
-		WithLevel(log.DEBUG).
-		Build()
+	logger := log.New(
+		log.WithLevel(log.DEBUG),
+	)
 
 	// Set as default
 	log.SetDefault(logger)

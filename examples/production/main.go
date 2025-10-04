@@ -11,17 +11,17 @@ import (
 
 func main() {
 	// Production logger configuration
-	logger := log.New().
-		WithLevel(log.INFO).
-		WithFormat(log.FormatJSON).
-		WithDefaultFields(
+	logger := log.New(
+		log.WithLevel(log.INFO),
+		log.WithFormat(log.FormatJSON),
+		log.WithDefaultFields(
 			"service", "api-server",
 			"version", "1.0.0",
 			"environment", "production",
 			"host", getHostname(),
-		).
-		WithCaller(). // Include caller information
-		Build()
+		),
+		log.WithCaller(), // Include caller information
+	)
 
 	// Set as default
 	log.SetDefault(logger)

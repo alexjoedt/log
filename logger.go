@@ -69,118 +69,128 @@ type BufferConfig struct {
 	FlushInterval time.Duration // Auto-flush interval
 }
 
-// Builder provides a fluent API for creating loggers.
-type Builder struct {
-	config *Config
-}
-
-// New creates a new Logger builder with default settings.
-func New() *Builder {
-	return &Builder{
-		config: &Config{
-			Level:           getDefaultLevel(),
-			Format:          getDefaultFormat(),
-			Writer:          os.Stderr,
-			TimestampFormat: time.RFC3339,
-			CallerSkip:      2,
-			DefaultFields:   []any{},
-			Hooks:           []Hook{},
-		},
-	}
-}
+// Option is a function that configures a Logger.
+type Option func(*Config)
 
 // WithLevel sets the minimum log level.
-func (b *Builder) WithLevel(level Level) *Builder {
-	b.config.Level = level
-	return b
+func WithLevel(level Level) Option {
+	return func(c *Config) {
+		c.Level = level
+	}
 }
 
 // WithFormat sets the output format.
-func (b *Builder) WithFormat(format Format) *Builder {
-	b.config.Format = format
-	return b
+func WithFormat(format Format) Option {
+	return func(c *Config) {
+		c.Format = format
+	}
 }
 
 // WithWriter sets the output writer.
-func (b *Builder) WithWriter(w io.Writer) *Builder {
-	b.config.Writer = w
-	return b
+func WithWriter(w io.Writer) Option {
+	return func(c *Config) {
+		c.Writer = w
+	}
 }
 
 // WithWriters sets multiple output writers (fan-out).
-func (b *Builder) WithWriters(writers ...io.Writer) *Builder {
-	b.config.Writers = writers
-	return b
+func WithWriters(writers ...io.Writer) Option {
+	return func(c *Config) {
+		c.Writers = writers
+	}
 }
 
 // WithTimestampFormat sets the timestamp format.
-func (b *Builder) WithTimestampFormat(format string) *Builder {
-	b.config.TimestampFormat = format
-	return b
+func WithTimestampFormat(format string) Option {
+	return func(c *Config) {
+		c.TimestampFormat = format
+	}
 }
 
-// WithCaller enables or disables caller information.
-func (b *Builder) WithCaller() *Builder {
-	b.config.ShowCaller = true
-	return b
+// WithCaller enables caller information.
+func WithCaller() Option {
+	return func(c *Config) {
+		c.ShowCaller = true
+	}
 }
 
 // WithCallerSkip sets the number of stack frames to skip for caller info.
-func (b *Builder) WithCallerSkip(skip int) *Builder {
-	b.config.CallerSkip = skip
-	return b
+func WithCallerSkip(skip int) Option {
+	return func(c *Config) {
+		c.CallerSkip = skip
+	}
 }
 
-// WithFields adds default fields to all log messages.
-func (b *Builder) WithDefaultFields(args ...any) *Builder {
-	b.config.DefaultFields = append(b.config.DefaultFields, args...)
-	return b
+// WithDefaultFields adds default fields to all log messages.
+func WithDefaultFields(args ...any) Option {
+	return func(c *Config) {
+		c.DefaultFields = append(c.DefaultFields, args...)
+	}
 }
 
 // WithStackTrace enables stack traces for the given level and above.
-func (b *Builder) WithStackTrace(level Level) *Builder {
-	b.config.EnableStackTrace = level
-	return b
+func WithStackTrace(level Level) Option {
+	return func(c *Config) {
+		c.EnableStackTrace = level
+	}
 }
 
 // WithRotation configures log rotation.
-func (b *Builder) WithRotation(maxSize, maxBackups, maxAge int, compress bool) *Builder {
-	b.config.Rotation = &RotationConfig{
-		MaxSize:    maxSize,
-		MaxBackups: maxBackups,
-		MaxAge:     maxAge,
-		Compress:   compress,
+func WithRotation(maxSize, maxBackups, maxAge int, compress bool) Option {
+	return func(c *Config) {
+		c.Rotation = &RotationConfig{
+			MaxSize:    maxSize,
+			MaxBackups: maxBackups,
+			MaxAge:     maxAge,
+			Compress:   compress,
+		}
 	}
-	return b
 }
 
 // WithSampling configures log sampling.
-func (b *Builder) WithSampling(first, thereafter int) *Builder {
-	b.config.Sampling = &SamplingConfig{
-		First:      first,
-		Thereafter: thereafter,
+func WithSampling(first, thereafter int) Option {
+	return func(c *Config) {
+		c.Sampling = &SamplingConfig{
+			First:      first,
+			Thereafter: thereafter,
+		}
 	}
-	return b
 }
 
 // WithBuffer configures buffered writing.
-func (b *Builder) WithBuffer(size int, flushInterval time.Duration) *Builder {
-	b.config.Buffer = &BufferConfig{
-		Size:          size,
-		FlushInterval: flushInterval,
+func WithBuffer(size int, flushInterval time.Duration) Option {
+	return func(c *Config) {
+		c.Buffer = &BufferConfig{
+			Size:          size,
+			FlushInterval: flushInterval,
+		}
 	}
-	return b
 }
 
 // WithHook adds a hook to this logger.
-func (b *Builder) WithHook(hook Hook) *Builder {
-	b.config.Hooks = append(b.config.Hooks, hook)
-	return b
+func WithHook(hook Hook) Option {
+	return func(c *Config) {
+		c.Hooks = append(c.Hooks, hook)
+	}
 }
 
-// Build creates the Logger from the builder configuration.
-func (b *Builder) Build() *Logger {
-	config := b.config
+// New creates a new Logger with the given options.
+func New(opts ...Option) *Logger {
+	// Create default config
+	config := &Config{
+		Level:           getDefaultLevel(),
+		Format:          getDefaultFormat(),
+		Writer:          os.Stderr,
+		TimestampFormat: time.RFC3339,
+		CallerSkip:      2,
+		DefaultFields:   []any{},
+		Hooks:           []Hook{},
+	}
+
+	// Apply options
+	for _, opt := range opts {
+		opt(config)
+	}
 
 	// Determine the writer
 	var writer io.Writer

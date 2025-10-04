@@ -24,11 +24,11 @@ func NewTestLogger() (*TestLogger, *TestHook) {
 	}
 
 	buf := &bytes.Buffer{}
-	logger := New().
-		WithWriter(buf).
-		WithLevel(TRACE).
-		WithHook(hook.capture).
-		Build()
+	logger := New(
+		WithWriter(buf),
+		WithLevel(TRACE),
+		WithHook(hook.capture),
+	)
 
 	return &TestLogger{
 		Logger: logger,

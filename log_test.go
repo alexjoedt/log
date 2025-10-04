@@ -40,7 +40,7 @@ func TestDefaultLogger(t *testing.T) {
 
 	// Set a custom default logger
 	buf := &bytes.Buffer{}
-	customLogger := New().WithWriter(buf).Build()
+	customLogger := New(WithWriter(buf))
 	SetDefault(customLogger)
 
 	Info("test message")
@@ -51,17 +51,17 @@ func TestDefaultLogger(t *testing.T) {
 	}
 
 	// Reset to original
-	SetDefault(New().Build())
+	SetDefault(New())
 }
 
 func TestLoggerBuilder(t *testing.T) {
 	buf := &bytes.Buffer{}
-	logger := New().
-		WithLevel(DEBUG).
-		WithWriter(buf).
-		WithFormat(FormatJSON).
-		WithDefaultFields("app", "test", "version", "1.0").
-		Build()
+	logger := New(
+		WithLevel(DEBUG),
+		WithWriter(buf),
+		WithFormat(FormatJSON),
+		WithDefaultFields("app", "test", "version", "1.0"),
+	)
 
 	if logger == nil {
 		t.Fatal("Logger is nil")
@@ -118,7 +118,7 @@ func TestLoggerWithFields(t *testing.T) {
 }
 
 func TestIsLevelEnabled(t *testing.T) {
-	logger := New().WithLevel(WARN).Build()
+	logger := New(WithLevel(WARN))
 
 	if logger.IsLevelEnabled(DEBUG) {
 		t.Error("DEBUG should not be enabled when level is WARN")
@@ -139,7 +139,7 @@ func TestIsLevelEnabled(t *testing.T) {
 
 func TestPackageLevelFunctions(t *testing.T) {
 	buf := &bytes.Buffer{}
-	logger := New().WithWriter(buf).WithLevel(DEBUG).Build()
+	logger := New(WithWriter(buf), WithLevel(DEBUG))
 	SetDefault(logger)
 
 	Debug("debug message")
@@ -226,10 +226,10 @@ func TestHooks(t *testing.T) {
 	}
 
 	buf := &bytes.Buffer{}
-	logger := New().
-		WithWriter(buf).
-		WithHook(hook).
-		Build()
+	logger := New(
+		WithWriter(buf),
+		WithHook(hook),
+	)
 
 	logger.Info("test message", "key", "value")
 
@@ -257,10 +257,10 @@ func TestHookError(t *testing.T) {
 	}
 
 	buf := &bytes.Buffer{}
-	logger := New().
-		WithWriter(buf).
-		WithHook(hook).
-		Build()
+	logger := New(
+		WithWriter(buf),
+		WithHook(hook),
+	)
 
 	// Log should not appear because hook returns error
 	logger.Info("test message")
@@ -307,11 +307,11 @@ func TestTestLogger(t *testing.T) {
 
 func TestConsoleFormat(t *testing.T) {
 	buf := &bytes.Buffer{}
-	logger := New().
-		WithWriter(buf).
-		WithFormat(FormatConsole).
-		WithLevel(DEBUG).
-		Build()
+	logger := New(
+		WithWriter(buf),
+		WithFormat(FormatConsole),
+		WithLevel(DEBUG),
+	)
 
 	logger.Info("test message", "key", "value")
 
@@ -326,10 +326,10 @@ func TestConsoleFormat(t *testing.T) {
 
 func TestJSONFormat(t *testing.T) {
 	buf := &bytes.Buffer{}
-	logger := New().
-		WithWriter(buf).
-		WithFormat(FormatJSON).
-		Build()
+	logger := New(
+		WithWriter(buf),
+		WithFormat(FormatJSON),
+	)
 
 	logger.Info("test message", "key", "value")
 
@@ -344,10 +344,10 @@ func TestJSONFormat(t *testing.T) {
 
 func TestTextFormat(t *testing.T) {
 	buf := &bytes.Buffer{}
-	logger := New().
-		WithWriter(buf).
-		WithFormat(FormatText).
-		Build()
+	logger := New(
+		WithWriter(buf),
+		WithFormat(FormatText),
+	)
 
 	logger.Info("test message", "key", "value")
 
@@ -363,7 +363,7 @@ func TestTextFormat(t *testing.T) {
 func TestEnvConfiguration(t *testing.T) {
 	// This test would require mocking environment variables
 	// For now, just test that FromEnv creates a logger
-	logger := FromEnv().Build()
+	logger := FromEnv()
 	if logger == nil {
 		t.Error("Expected non-nil logger from FromEnv")
 	}
@@ -400,9 +400,9 @@ func TestMultipleWriters(t *testing.T) {
 	buf1 := &bytes.Buffer{}
 	buf2 := &bytes.Buffer{}
 
-	logger := New().
-		WithWriters(buf1, buf2).
-		Build()
+	logger := New(
+		WithWriters(buf1, buf2),
+	)
 
 	logger.Info("test message")
 
@@ -420,11 +420,11 @@ func TestMultipleWriters(t *testing.T) {
 
 func TestTimestampFormat(t *testing.T) {
 	buf := &bytes.Buffer{}
-	logger := New().
-		WithWriter(buf).
-		WithFormat(FormatConsole).
-		WithTimestampFormat(time.RFC3339Nano).
-		Build()
+	logger := New(
+		WithWriter(buf),
+		WithFormat(FormatConsole),
+		WithTimestampFormat(time.RFC3339Nano),
+	)
 
 	logger.Info("test message")
 
