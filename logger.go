@@ -120,8 +120,8 @@ func (b *Builder) WithTimestampFormat(format string) *Builder {
 }
 
 // WithCaller enables or disables caller information.
-func (b *Builder) WithCaller(enable bool) *Builder {
-	b.config.ShowCaller = enable
+func (b *Builder) WithCaller() *Builder {
+	b.config.ShowCaller = true
 	return b
 }
 
