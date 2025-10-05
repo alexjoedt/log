@@ -138,6 +138,30 @@ requestLogger.Info("processing request")
 // Output includes: app=myapp env=prod request_id=... user_id=12345
 ```
 
+### Timestamp Configuration
+
+By default, all log formats include timestamps in RFC3339 format. You can customize or disable timestamps:
+
+```go
+// Custom timestamp format
+logger := log.New(
+    log.WithTimestampFormat(time.RFC3339Nano),
+)
+
+// Disable timestamps completely (works for all formats)
+logger := log.New(
+    log.WithoutTimestamp(),
+)
+```
+
+**Example output without timestamps:**
+
+```
+Console: [INFO ] application started service=api
+JSON:    {"level":"INFO","msg":"application started","service":"api"}
+Text:    level=INFO msg="application started" service=api
+```
+
 ### Configuration Options
 
 #### Option Functions

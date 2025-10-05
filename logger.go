@@ -10,6 +10,14 @@ import (
 	"time"
 )
 
+// removeTimeAttr is a ReplaceAttr function that removes the time attribute from log records.
+func removeTimeAttr(groups []string, a slog.Attr) slog.Attr {
+	if a.Key == slog.TimeKey && len(groups) == 0 {
+		return slog.Attr{}
+	}
+	return a
+}
+
 // Logger is the main logging type that wraps slog.Logger with enhanced features.
 type Logger struct {
 	slog   *slog.Logger
@@ -229,15 +237,23 @@ func New(opts ...Option) *Logger {
 	var handler slog.Handler
 	switch config.Format {
 	case FormatJSON:
-		handler = slog.NewJSONHandler(writer, &slog.HandlerOptions{
+		opts := &slog.HandlerOptions{
 			Level:     config.Level.ToSlogLevel(),
 			AddSource: config.ShowCaller,
-		})
+		}
+		if config.DisableTimestamp {
+			opts.ReplaceAttr = removeTimeAttr
+		}
+		handler = slog.NewJSONHandler(writer, opts)
 	case FormatText:
-		handler = slog.NewTextHandler(writer, &slog.HandlerOptions{
+		opts := &slog.HandlerOptions{
 			Level:     config.Level.ToSlogLevel(),
 			AddSource: config.ShowCaller,
-		})
+		}
+		if config.DisableTimestamp {
+			opts.ReplaceAttr = removeTimeAttr
+		}
+		handler = slog.NewTextHandler(writer, opts)
 	case FormatConsole:
 		handler = newConsoleHandler(writer, config)
 	default:

@@ -457,6 +457,56 @@ func TestWithoutTimestamp(t *testing.T) {
 	}
 }
 
+func TestWithoutTimestampJSON(t *testing.T) {
+	buf := &bytes.Buffer{}
+	logger := New(
+		WithWriter(buf),
+		WithFormat(FormatJSON),
+		WithoutTimestamp(),
+	)
+
+	logger.Info("test message")
+
+	output := buf.String()
+	// Verify the message is logged
+	if !strings.Contains(output, "test message") {
+		t.Errorf("Expected output to contain 'test message', got: %s", output)
+	}
+	// Verify no "time" field in JSON output
+	if strings.Contains(output, `"time"`) {
+		t.Errorf("Expected JSON output to not contain 'time' field, but got: %s", output)
+	}
+	// Verify it still contains level and msg
+	if !strings.Contains(output, `"level"`) || !strings.Contains(output, `"msg"`) {
+		t.Errorf("Expected JSON output to contain 'level' and 'msg' fields, got: %s", output)
+	}
+}
+
+func TestWithoutTimestampText(t *testing.T) {
+	buf := &bytes.Buffer{}
+	logger := New(
+		WithWriter(buf),
+		WithFormat(FormatText),
+		WithoutTimestamp(),
+	)
+
+	logger.Info("test message")
+
+	output := buf.String()
+	// Verify the message is logged
+	if !strings.Contains(output, "test message") {
+		t.Errorf("Expected output to contain 'test message', got: %s", output)
+	}
+	// Verify no "time=" field in text output
+	if strings.Contains(output, "time=") {
+		t.Errorf("Expected text output to not contain 'time=' field, but got: %s", output)
+	}
+	// Verify it still contains level and msg
+	if !strings.Contains(output, "level=") || !strings.Contains(output, "msg=") {
+		t.Errorf("Expected text output to contain 'level=' and 'msg=' fields, got: %s", output)
+	}
+}
+
 func TestErrorWithError(t *testing.T) {
 	logger, hook := NewTestLogger()
 
