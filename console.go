@@ -157,9 +157,9 @@ func (h *consoleHandler) formatLevel(level Level) string {
 	}
 
 	if h.useColors {
-		return fmt.Sprintf("%s[%s]%s", color, levelStr, colorReset)
+		return fmt.Sprintf("%s%s%s", color, levelStr, colorReset)
 	}
-	return fmt.Sprintf("[%s]", levelStr)
+	return fmt.Sprintf("%s", levelStr)
 }
 
 // appendAttr appends a formatted attribute to the buffer.
