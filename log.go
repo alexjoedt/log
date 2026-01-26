@@ -8,6 +8,7 @@ import (
 	"io"
 	"log/slog"
 	"os"
+	"strings"
 	"sync"
 )
 
@@ -245,4 +246,38 @@ func FromContext(ctx context.Context) *Logger {
 		return logger
 	}
 	return Default()
+}
+
+// ParseLogLevel parses a string and returns the corresponding log Level.
+// It accepts common level abbreviations and full names (case-insensitive).
+// Leading and trailing whitespace is ignored.
+//
+// Supported values:
+//   - "trace", "trc" -> TRACE
+//   - "debug", "dbg" -> DEBUG
+//   - "info", "inf" -> INFO
+//   - "warn", "warning" -> WARN
+//   - "error", "err" -> ERROR
+//   - "fatal", "fat", "ftl" -> FATAL
+//
+// If the input doesn't match any recognized level, it returns ERROR as the default.
+func ParseLogLevel(levelStr string) Level {
+	normalized := strings.ToLower(strings.TrimSpace(levelStr))
+
+	switch normalized {
+	case "trace", "trc":
+		return TRACE
+	case "debug", "dbg":
+		return DEBUG
+	case "info", "inf":
+		return INFO
+	case "warning", "warn":
+		return WARN
+	case "error", "err":
+		return ERROR
+	case "fatal", "fat", "fatl", "ftl":
+		return FATAL
+	default:
+		return ERROR
+	}
 }

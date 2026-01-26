@@ -525,3 +525,66 @@ func TestErrorWithError(t *testing.T) {
 		t.Errorf("Expected error 'test error', got '%v'", entry.Error)
 	}
 }
+
+func TestParseLogLevel(t *testing.T) {
+	tests := []struct {
+		name  string
+		input string
+		want  Level
+	}{
+		// Full level names
+		{name: "trace lowercase", input: "trace", want: TRACE},
+		{name: "debug lowercase", input: "debug", want: DEBUG},
+		{name: "info lowercase", input: "info", want: INFO},
+		{name: "warn lowercase", input: "warn", want: WARN},
+		{name: "warning lowercase", input: "warning", want: WARN},
+		{name: "error lowercase", input: "error", want: ERROR},
+		{name: "fatal lowercase", input: "fatal", want: FATAL},
+
+		// Abbreviations
+		{name: "trace abbrev", input: "trc", want: TRACE},
+		{name: "debug abbrev", input: "dbg", want: DEBUG},
+		{name: "info abbrev", input: "inf", want: INFO},
+		{name: "error abbrev", input: "err", want: ERROR},
+		{name: "fatal abbrev fat", input: "fat", want: FATAL},
+		{name: "fatal abbrev fatl", input: "fatl", want: FATAL},
+		{name: "fatal abbrev ftl", input: "ftl", want: FATAL},
+
+		// Case insensitivity
+		{name: "uppercase TRACE", input: "TRACE", want: TRACE},
+		{name: "uppercase DEBUG", input: "DEBUG", want: DEBUG},
+		{name: "uppercase INFO", input: "INFO", want: INFO},
+		{name: "uppercase WARN", input: "WARN", want: WARN},
+		{name: "uppercase ERROR", input: "ERROR", want: ERROR},
+		{name: "uppercase FATAL", input: "FATAL", want: FATAL},
+		{name: "mixed case TrAcE", input: "TrAcE", want: TRACE},
+		{name: "mixed case DeBuG", input: "DeBuG", want: DEBUG},
+		{name: "mixed case InFo", input: "InFo", want: INFO},
+		{name: "mixed case WaRn", input: "WaRn", want: WARN},
+		{name: "mixed case ErRoR", input: "ErRoR", want: ERROR},
+		{name: "mixed case FaTaL", input: "FaTaL", want: FATAL},
+
+		// Whitespace handling
+		{name: "leading space", input: "  info", want: INFO},
+		{name: "trailing space", input: "warn  ", want: WARN},
+		{name: "both spaces", input: "  error  ", want: ERROR},
+		{name: "tabs and spaces", input: "\t debug \t", want: DEBUG},
+
+		// Invalid inputs (should return ERROR as default)
+		{name: "empty string", input: "", want: ERROR},
+		{name: "unknown level", input: "unknown", want: ERROR},
+		{name: "invalid abbrev", input: "xyz", want: ERROR},
+		{name: "numeric", input: "123", want: ERROR},
+		{name: "special chars", input: "!@#", want: ERROR},
+		{name: "spaces only", input: "   ", want: ERROR},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			got := ParseLogLevel(tt.input)
+			if got != tt.want {
+				t.Errorf("ParseLogLevel(%q) = %v, want %v", tt.input, got, tt.want)
+			}
+		})
+	}
+}
