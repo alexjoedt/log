@@ -190,24 +190,10 @@ func WithHook(hook Hook) Option {
 	}
 }
 
-// New creates a new Logger with the given options.
-func New(opts ...Option) *Logger {
-	// Create default config
-	config := &Config{
-		Level:           getDefaultLevel(),
-		Format:          getDefaultFormat(),
-		Writer:          os.Stderr,
-		TimestampFormat: time.RFC3339,
-		CallerSkip:      2,
-		DefaultFields:   []any{},
-		Hooks:           []Hook{},
-	}
-
-	// Apply options
-	for _, opt := range opts {
-		opt(config)
-	}
-
+// buildHandler constructs a fully-configured slog.Handler from Config.
+// It applies writer wrappers (rotation, sampling, buffering), creates the
+// appropriate handler based on Format, and applies hook wrappers if configured.
+func buildHandler(config *Config) slog.Handler {
 	// Determine the writer
 	var writer io.Writer
 	if len(config.Writers) > 1 {
@@ -269,6 +255,40 @@ func New(opts ...Option) *Logger {
 		}
 	}
 
+	return handler
+}
+
+// New creates a new Logger with the given options.
+func New(opts ...Option) *Logger {
+	// Create default config
+	config := &Config{
+		Level:           getDefaultLevel(),
+		Format:          getDefaultFormat(),
+		Writer:          os.Stderr,
+		TimestampFormat: time.RFC3339,
+		CallerSkip:      2,
+		DefaultFields:   []any{},
+		Hooks:           []Hook{},
+	}
+
+	// Apply options
+	for _, opt := range opts {
+		opt(config)
+	}
+
+	// Build the handler
+	handler := buildHandler(config)
+
+	// Determine the writer for Logger struct
+	var writer io.Writer
+	if len(config.Writers) > 1 {
+		writer = &multiWriter{writers: config.Writers}
+	} else if len(config.Writers) == 1 {
+		writer = config.Writers[0]
+	} else {
+		writer = config.Writer
+	}
+
 	// Create the slog logger
 	slogLogger := slog.New(handler)
 
@@ -286,6 +306,70 @@ func New(opts ...Option) *Logger {
 		hooks:  config.Hooks,
 		config: config,
 	}
+}
+
+// NewSlogHandler creates a fully-configured slog.Handler with the given options.
+// This allows using the package's enhanced features (rotation, sampling, console
+// formatting, hooks) while maintaining a pure slog-based workflow.
+//
+// All options that work with New() also work with NewSlogHandler(), including:
+//   - WithLevel, WithFormat, WithWriter
+//   - WithRotation, WithSampling, WithBuffer
+//   - WithHook, WithCaller, WithoutTimestamp
+//   - WithDefaultFields (applied via handler.WithAttrs)
+//
+// Example usage:
+//
+//	handler := log.NewSlogHandler(
+//	    log.WithLevel(log.DEBUG),
+//	    log.WithFormat(log.FormatJSON),
+//	    log.WithDefaultFields("service", "api", "version", "1.0"),
+//	)
+//	logger := slog.New(handler)
+//	logger.Info("using slog with enhanced handler")
+//
+// Note: When using buffered or rotating writers, the caller is responsible for
+// managing writer lifecycle (flushing/closing) if needed.
+func NewSlogHandler(opts ...Option) slog.Handler {
+	// Create default config
+	config := &Config{
+		Level:           getDefaultLevel(),
+		Format:          getDefaultFormat(),
+		Writer:          os.Stderr,
+		TimestampFormat: time.RFC3339,
+		CallerSkip:      2,
+		DefaultFields:   []any{},
+		Hooks:           []Hook{},
+	}
+
+	// Apply options
+	for _, opt := range opts {
+		opt(config)
+	}
+
+	// Build the handler
+	handler := buildHandler(config)
+
+	// Apply default fields to handler if configured
+	if len(config.DefaultFields) > 0 {
+		var attrs []slog.Attr
+		for i := 0; i < len(config.DefaultFields); i += 2 {
+			if i+1 < len(config.DefaultFields) {
+				key, ok := config.DefaultFields[i].(string)
+				if !ok {
+					// Convert non-string keys to string
+					key = slog.AnyValue(config.DefaultFields[i]).String()
+				}
+				value := config.DefaultFields[i+1]
+				attrs = append(attrs, slog.Any(key, value))
+			}
+		}
+		if len(attrs) > 0 {
+			handler = handler.WithAttrs(attrs)
+		}
+	}
+
+	return handler
 }
 
 // Slog returns the underlying *slog.Logger for compatibility.

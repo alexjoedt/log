@@ -11,6 +11,9 @@ cd basic && go run main.go
 # Production setup with JSON logging and hooks
 cd production && go run main.go
 
+# Using slog.Handler directly
+cd slog_handler && go run main.go
+
 # Context-based logging
 cd context && go run main.go
 
@@ -38,6 +41,13 @@ Demonstrates:
 - Caller information
 - Global hooks for error tracking
 - Request-scoped loggers
+
+### [slog_handler/](slog_handler/) - Direct slog.Handler Usage
+Demonstrates:
+- Creating handlers with `NewSlogHandler()`
+- Using handlers with `slog.New()`
+- Enhanced features with pure slog workflow
+- JSON and console formats
 
 ### [context/](context/) - Context Integration
 Demonstrates:

@@ -1,6 +1,28 @@
 // Package log provides a production-ready logging package that wraps Go's slog
 // with enhanced features including beautiful console output, log rotation, sampling,
 // and more.
+//
+// Basic usage with the logger wrapper:
+//
+//	logger := log.New(
+//	    log.WithLevel(log.INFO),
+//	    log.WithFormat(log.FormatJSON),
+//	)
+//	logger.Info("hello world", "key", "value")
+//
+// Or use the default logger directly:
+//
+//	log.Info("hello world")
+//
+// For slog-first workflows, create a handler directly:
+//
+//	handler := log.NewSlogHandler(
+//	    log.WithLevel(log.DEBUG),
+//	    log.WithFormat(log.FormatJSON),
+//	    log.WithDefaultFields("service", "api"),
+//	)
+//	logger := slog.New(handler)
+//	logger.Info("using slog with enhanced features")
 package log
 
 import (

@@ -341,6 +341,34 @@ log.SetExitHandler(func(code int) {
 
 ### Slog Compatibility
 
+#### Direct slog.Handler Usage
+
+For slog-first workflows, create a handler directly and use it with `slog.New()`:
+
+```go
+handler := log.NewSlogHandler(
+    log.WithLevel(log.DEBUG),
+    log.WithFormat(log.FormatJSON),
+    log.WithDefaultFields("service", "api", "version", "1.0"),
+)
+
+logger := slog.New(handler)
+logger.Info("using slog with enhanced features")
+```
+
+All options work with `NewSlogHandler()`:
+- Log levels, formats, and writers
+- Rotation, sampling, and buffering
+- Hooks and caller information
+- Default fields (applied via `handler.WithAttrs()`)
+
+This is useful when:
+- You prefer working directly with `slog.Logger`
+- You need to pass a handler to third-party libraries
+- You want a pure slog workflow with enhanced features
+
+#### Access Underlying Logger
+
 Access the underlying `*slog.Logger` for compatibility:
 
 ```go
@@ -365,6 +393,7 @@ See the [examples](examples/) directory for complete working examples:
 
 - [Basic usage](examples/basic/)
 - [Production setup](examples/production/)
+- [Direct slog.Handler](examples/slog_handler/)
 - [Testing](examples/testing/)
 - [Hooks integration](examples/hooks/)
 - [Context usage](examples/context/)

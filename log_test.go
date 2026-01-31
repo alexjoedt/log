@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"context"
 	"errors"
+	"log/slog"
 	"strings"
 	"testing"
 	"time"
@@ -587,4 +588,205 @@ func TestParseLogLevel(t *testing.T) {
 			}
 		})
 	}
+}
+
+func TestNewSlogHandler(t *testing.T) {
+	t.Run("creates valid handler", func(t *testing.T) {
+		handler := NewSlogHandler()
+		if handler == nil {
+			t.Fatal("NewSlogHandler returned nil")
+		}
+	})
+
+	t.Run("works with slog.New", func(t *testing.T) {
+		buf := &bytes.Buffer{}
+		handler := NewSlogHandler(
+			WithLevel(INFO),
+			WithFormat(FormatJSON),
+			WithWriter(buf),
+		)
+
+		logger := slog.New(handler)
+		logger.Info("test message", "key", "value")
+
+		output := buf.String()
+		if !strings.Contains(output, "test message") {
+			t.Errorf("Expected output to contain 'test message', got: %s", output)
+		}
+		if !strings.Contains(output, "key") {
+			t.Errorf("Expected output to contain 'key', got: %s", output)
+		}
+	})
+
+	t.Run("respects level option", func(t *testing.T) {
+		buf := &bytes.Buffer{}
+		handler := NewSlogHandler(
+			WithLevel(WARN),
+			WithFormat(FormatJSON),
+			WithWriter(buf),
+		)
+
+		logger := slog.New(handler)
+		logger.Debug("debug message")
+		logger.Info("info message")
+		logger.Warn("warn message")
+
+		output := buf.String()
+		if strings.Contains(output, "debug message") {
+			t.Error("DEBUG message should be filtered")
+		}
+		if strings.Contains(output, "info message") {
+			t.Error("INFO message should be filtered")
+		}
+		if !strings.Contains(output, "warn message") {
+			t.Error("WARN message should be logged")
+		}
+	})
+
+	t.Run("applies default fields", func(t *testing.T) {
+		buf := &bytes.Buffer{}
+		handler := NewSlogHandler(
+			WithLevel(INFO),
+			WithFormat(FormatJSON),
+			WithWriter(buf),
+			WithDefaultFields("app", "test", "version", "1.0"),
+		)
+
+		logger := slog.New(handler)
+		logger.Info("message")
+
+		output := buf.String()
+		if !strings.Contains(output, "app") {
+			t.Errorf("Expected output to contain 'app', got: %s", output)
+		}
+		if !strings.Contains(output, "test") {
+			t.Errorf("Expected output to contain 'test', got: %s", output)
+		}
+		if !strings.Contains(output, "version") {
+			t.Errorf("Expected output to contain 'version', got: %s", output)
+		}
+	})
+
+	t.Run("supports all formats", func(t *testing.T) {
+		formats := []Format{FormatJSON, FormatText, FormatConsole}
+		for _, format := range formats {
+			t.Run(string(format), func(t *testing.T) {
+				buf := &bytes.Buffer{}
+				handler := NewSlogHandler(
+					WithLevel(INFO),
+					WithFormat(format),
+					WithWriter(buf),
+				)
+
+				logger := slog.New(handler)
+				logger.Info("test message")
+
+				output := buf.String()
+				if !strings.Contains(output, "test message") {
+					t.Errorf("Format %s: expected output to contain 'test message', got: %s", format, output)
+				}
+			})
+		}
+	})
+
+	t.Run("applies hooks", func(t *testing.T) {
+		buf := &bytes.Buffer{}
+		var hookCalled bool
+		hook := func(entry *Entry) error {
+			hookCalled = true
+			if entry.Message != "test message" {
+				t.Errorf("Expected message 'test message', got '%s'", entry.Message)
+			}
+			return nil
+		}
+
+		handler := NewSlogHandler(
+			WithLevel(INFO),
+			WithFormat(FormatJSON),
+			WithWriter(buf),
+			WithHook(hook),
+		)
+
+		logger := slog.New(handler)
+		logger.Info("test message")
+
+		if !hookCalled {
+			t.Error("Hook was not called")
+		}
+	})
+
+	t.Run("handles odd-length default fields", func(t *testing.T) {
+		buf := &bytes.Buffer{}
+		handler := NewSlogHandler(
+			WithLevel(INFO),
+			WithFormat(FormatJSON),
+			WithWriter(buf),
+			WithDefaultFields("app", "test", "orphan"),
+		)
+
+		logger := slog.New(handler)
+		logger.Info("message")
+
+		output := buf.String()
+		if !strings.Contains(output, "app") {
+			t.Error("Expected 'app' field to be included")
+		}
+		// Orphan field should be ignored
+	})
+
+	t.Run("handles non-string keys in default fields", func(t *testing.T) {
+		buf := &bytes.Buffer{}
+		handler := NewSlogHandler(
+			WithLevel(INFO),
+			WithFormat(FormatJSON),
+			WithWriter(buf),
+			WithDefaultFields(123, "numeric_key"),
+		)
+
+		logger := slog.New(handler)
+		logger.Info("message")
+
+		output := buf.String()
+		if !strings.Contains(output, "message") {
+			t.Error("Message should be logged despite non-string key")
+		}
+	})
+}
+
+func TestNewSlogHandlerFeatureParity(t *testing.T) {
+	t.Run("produces same output as New()", func(t *testing.T) {
+		buf1 := &bytes.Buffer{}
+		buf2 := &bytes.Buffer{}
+
+		// Using New()
+		logger1 := New(
+			WithLevel(INFO),
+			WithFormat(FormatJSON),
+			WithWriter(buf1),
+			WithoutTimestamp(),
+		)
+		logger1.Info("test message", "key", "value")
+
+		// Using NewSlogHandler()
+		handler := NewSlogHandler(
+			WithLevel(INFO),
+			WithFormat(FormatJSON),
+			WithWriter(buf2),
+			WithoutTimestamp(),
+			WithDefaultFields("key", "value"),
+		)
+		logger2 := slog.New(handler)
+		logger2.Info("test message")
+
+		output1 := buf1.String()
+		output2 := buf2.String()
+
+		// Both should contain the same key elements
+		if !strings.Contains(output1, "test message") || !strings.Contains(output2, "test message") {
+			t.Error("Both outputs should contain 'test message'")
+		}
+		if !strings.Contains(output1, "key") || !strings.Contains(output2, "key") {
+			t.Error("Both outputs should contain 'key'")
+		}
+	})
 }
