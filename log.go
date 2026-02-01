@@ -1,6 +1,6 @@
 // Package log provides a production-ready logging package that wraps Go's slog
 // with enhanced features including beautiful console output, log rotation, sampling,
-// and more.
+// dynamic log levels, and more.
 //
 // Basic usage with the logger wrapper:
 //
@@ -13,6 +13,13 @@
 // Or use the default logger directly:
 //
 //	log.Info("hello world")
+//
+// Dynamic log levels (change at runtime without restart):
+//
+//	logLevel := &slog.LevelVar{}
+//	logLevel.Set(slog.LevelInfo)
+//	logger := log.New(log.WithLevel(logLevel))
+//	// Later: logLevel.Set(slog.LevelDebug)
 //
 // For slog-first workflows, create a handler directly:
 //
@@ -73,7 +80,14 @@ func (l Level) String() string {
 }
 
 // ToSlogLevel converts our Level to slog.Level
+// Deprecated: Use Level() method instead to satisfy slog.Leveler interface.
 func (l Level) ToSlogLevel() slog.Level {
+	return slog.Level(l)
+}
+
+// Level implements slog.Leveler interface, allowing Level to be used
+// wherever slog expects a Leveler (e.g., slog.HandlerOptions, dynamic levels).
+func (l Level) Level() slog.Level {
 	return slog.Level(l)
 }
 

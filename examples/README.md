@@ -17,6 +17,9 @@ cd slog_handler && go run main.go
 # Context-based logging
 cd context && go run main.go
 
+# Dynamic log levels (change at runtime)
+cd dynamic_level && go run main.go
+
 # Hooks integration with metrics and error tracking
 cd hooks && go run main.go
 
@@ -55,6 +58,13 @@ Demonstrates:
 - Propagating loggers through call chains
 - Automatic field inheritance
 - Request tracing
+
+### [dynamic_level/](dynamic_level/) - Dynamic Log Levels
+Demonstrates:
+- Creating dynamic log levels with `slog.LevelVar`
+- Changing log levels at runtime
+- Signal handlers for toggling debug mode
+- Production debugging without restart
 
 ### [hooks/](hooks/) - Hooks Integration
 Demonstrates:

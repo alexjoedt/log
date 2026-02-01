@@ -790,3 +790,161 @@ func TestNewSlogHandlerFeatureParity(t *testing.T) {
 		}
 	})
 }
+
+func TestLevelImplementsSlogLeveler(t *testing.T) {
+	// Verify that Level implements slog.Leveler interface
+	var _ slog.Leveler = Level(0)
+	var _ slog.Leveler = DEBUG
+	var _ slog.Leveler = INFO
+
+	// Test Level() method
+	if DEBUG.Level() != slog.Level(DEBUG) {
+		t.Errorf("DEBUG.Level() = %v, want %v", DEBUG.Level(), slog.Level(DEBUG))
+	}
+	if INFO.Level() != slog.LevelInfo {
+		t.Errorf("INFO.Level() = %v, want %v", INFO.Level(), slog.LevelInfo)
+	}
+}
+
+func TestWithSlogLevel(t *testing.T) {
+	buf := &bytes.Buffer{}
+
+	// Test with slog.Level directly
+	logger := New(
+		WithLevel(slog.LevelDebug),
+		WithWriter(buf),
+		WithFormat(FormatJSON),
+	)
+
+	logger.Debug("debug message")
+	logger.Info("info message")
+
+	output := buf.String()
+	if !strings.Contains(output, "debug message") {
+		t.Error("Expected debug message to be logged")
+	}
+	if !strings.Contains(output, "info message") {
+		t.Error("Expected info message to be logged")
+	}
+}
+
+func TestDynamicLogLevel(t *testing.T) {
+	buf := &bytes.Buffer{}
+
+	// Create a dynamic level
+	logLevel := &slog.LevelVar{}
+	logLevel.Set(slog.LevelInfo)
+
+	logger := New(
+		WithLevel(logLevel),
+		WithWriter(buf),
+		WithFormat(FormatJSON),
+	)
+
+	// Initially at INFO, debug should be filtered
+	logger.Debug("debug 1")
+	logger.Info("info 1")
+
+	output1 := buf.String()
+	if strings.Contains(output1, "debug 1") {
+		t.Error("DEBUG message should be filtered at INFO level")
+	}
+	if !strings.Contains(output1, "info 1") {
+		t.Error("INFO message should be logged")
+	}
+
+	// Clear buffer
+	buf.Reset()
+
+	// Change level to DEBUG at runtime
+	logLevel.Set(slog.LevelDebug)
+
+	// Now debug should appear
+	logger.Debug("debug 2")
+	logger.Info("info 2")
+
+	output2 := buf.String()
+	if !strings.Contains(output2, "debug 2") {
+		t.Error("DEBUG message should be logged after level change")
+	}
+	if !strings.Contains(output2, "info 2") {
+		t.Error("INFO message should be logged after level change")
+	}
+}
+
+func TestDynamicLogLevelWithIsLevelEnabled(t *testing.T) {
+	logLevel := &slog.LevelVar{}
+	logLevel.Set(slog.LevelInfo)
+
+	logger := New(WithLevel(logLevel))
+
+	// Initially at INFO
+	if logger.IsLevelEnabled(DEBUG) {
+		t.Error("DEBUG should not be enabled at INFO level")
+	}
+	if !logger.IsLevelEnabled(INFO) {
+		t.Error("INFO should be enabled at INFO level")
+	}
+
+	// Change to DEBUG
+	logLevel.Set(slog.LevelDebug)
+
+	// Now DEBUG is enabled
+	if !logger.IsLevelEnabled(DEBUG) {
+		t.Error("DEBUG should be enabled after level change")
+	}
+	if !logger.IsLevelEnabled(INFO) {
+		t.Error("INFO should still be enabled after level change")
+	}
+}
+
+func TestWithLevelBackwardCompatibility(t *testing.T) {
+	buf := &bytes.Buffer{}
+
+	// Old API should still work - passing log.Level directly
+	logger := New(
+		WithLevel(DEBUG),
+		WithWriter(buf),
+	)
+
+	logger.Debug("debug message")
+
+	output := buf.String()
+	if !strings.Contains(output, "debug message") {
+		t.Error("Expected debug message with backward compatible API")
+	}
+}
+
+func TestConfigLevelMethod(t *testing.T) {
+	// Test static level
+	config := &Config{
+		leveler: INFO,
+	}
+	if config.Level() != INFO {
+		t.Errorf("Config.Level() = %v, want %v", config.Level(), INFO)
+	}
+
+	// Test dynamic level
+	logLevel := &slog.LevelVar{}
+	logLevel.Set(slog.LevelDebug)
+	config2 := &Config{
+		leveler: logLevel,
+	}
+	if config2.Level() != DEBUG {
+		t.Errorf("Config.Level() = %v, want %v", config2.Level(), DEBUG)
+	}
+
+	// Change dynamic level
+	logLevel.Set(slog.LevelWarn)
+	if config2.Level() != WARN {
+		t.Errorf("Config.Level() after change = %v, want %v", config2.Level(), WARN)
+	}
+
+	// Test nil leveler
+	config3 := &Config{
+		leveler: nil,
+	}
+	if config3.Level() != INFO {
+		t.Errorf("Config.Level() with nil = %v, want %v (default)", config3.Level(), INFO)
+	}
+}

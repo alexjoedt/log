@@ -20,6 +20,7 @@ A production-ready logging package for Go that wraps `slog` (Go 1.21+) with enha
 🚀 **High Performance** - Minimal overhead over raw slog  
 🔌 **Context Integration** - First-class context.Context support  
 🌍 **Environment Config** - Configure via environment variables  
+🔥 **Dynamic Log Levels** - Change levels at runtime without restart (slog.Leveler support)  
 
 ## Installation
 
@@ -90,6 +91,74 @@ The package supports six log levels in order of severity:
 if log.IsDebugEnabled() {
     log.Debug("expensive data", "dump", computeExpensiveValue())
 }
+```
+
+### Dynamic Log Levels
+
+Change log levels at runtime without restarting your application - perfect for production debugging:
+
+```go
+// Create a dynamic log level using slog.LevelVar
+logLevel := &slog.LevelVar{}
+logLevel.Set(slog.LevelInfo)
+
+logger := log.New(
+    log.WithLevel(logLevel),  // Pass the LevelVar
+    log.WithFormat(log.FormatJSON),
+)
+
+// Later, change the level dynamically (e.g., via HTTP endpoint or signal)
+logLevel.Set(slog.LevelDebug)  // Now DEBUG logs will appear!
+```
+
+**Production use case - HTTP endpoint to change level:**
+
+```go
+logLevel := &slog.LevelVar{}
+logLevel.Set(slog.LevelInfo)
+logger := log.New(log.WithLevel(logLevel))
+
+http.HandleFunc("/admin/loglevel", func(w http.ResponseWriter, r *http.Request) {
+    level := r.URL.Query().Get("level")
+    switch level {
+    case "debug":
+        logLevel.Set(slog.LevelDebug)
+    case "info":
+        logLevel.Set(slog.LevelInfo)
+    case "warn":
+        logLevel.Set(slog.LevelWarn)
+    case "error":
+        logLevel.Set(slog.LevelError)
+    }
+    fmt.Fprintf(w, "Log level changed to %s", level)
+})
+```
+
+**Why dynamic levels?**
+- 🐛 Enable debug logging in production without restart
+- 🔍 Troubleshoot issues in real-time
+- 📉 Reduce log volume during normal operation
+- ⚡ Zero downtime log level changes
+
+See [examples/dynamic_level](examples/dynamic_level/) for a complete example with signal handlers.
+
+### slog.Leveler Support
+
+The package fully supports Go's `slog.Leveler` interface:
+
+```go
+// Static levels (backward compatible)
+logger := log.New(log.WithLevel(log.DEBUG))
+
+// slog levels
+logger := log.New(log.WithLevel(slog.LevelDebug))
+
+// Dynamic levels
+logLevel := &slog.LevelVar{}
+logger := log.New(log.WithLevel(logLevel))
+
+// Our Level type implements slog.Leveler
+var _ slog.Leveler = log.Level(0)
 ```
 
 ### Output Formats

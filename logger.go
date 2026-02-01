@@ -32,7 +32,7 @@ type Logger struct {
 
 // Config holds the configuration for a Logger.
 type Config struct {
-	Level            Level
+	leveler          slog.Leveler // Minimum log level (supports dynamic levels via slog.LevelVar)
 	Format           Format
 	Writer           io.Writer
 	TimestampFormat  string
@@ -56,6 +56,15 @@ type Config struct {
 
 	// Hooks
 	Hooks []Hook
+}
+
+// Level returns the current minimum log level.
+// This method allows checking the current level even when using dynamic levels.
+func (c *Config) Level() Level {
+	if c.leveler == nil {
+		return INFO
+	}
+	return Level(c.leveler.Level())
 }
 
 // RotationConfig holds log rotation settings.
@@ -82,9 +91,26 @@ type BufferConfig struct {
 type Option func(*Config)
 
 // WithLevel sets the minimum log level.
-func WithLevel(level Level) Option {
+// Accepts slog.Leveler interface, supporting:
+//   - Static levels: log.DEBUG, log.INFO, etc.
+//   - slog levels: slog.LevelDebug, slog.LevelInfo, etc.
+//   - Dynamic levels: &slog.LevelVar{} (can be changed at runtime)
+//
+// Example with static level:
+//
+//	logger := log.New(log.WithLevel(log.DEBUG))
+//
+// Example with dynamic level:
+//
+//	logLevel := &slog.LevelVar{}
+//	logLevel.Set(slog.LevelInfo)
+//	logger := log.New(log.WithLevel(logLevel))
+//	// Later: logLevel.Set(slog.LevelDebug)
+func WithLevel(leveler slog.Leveler) Option {
 	return func(c *Config) {
-		c.Level = level
+		if leveler != nil {
+			c.leveler = leveler
+		}
 	}
 }
 
@@ -224,7 +250,7 @@ func buildHandler(config *Config) slog.Handler {
 	switch config.Format {
 	case FormatJSON:
 		opts := &slog.HandlerOptions{
-			Level:     config.Level.ToSlogLevel(),
+			Level:     config.leveler,
 			AddSource: config.ShowCaller,
 		}
 		if config.DisableTimestamp {
@@ -233,7 +259,7 @@ func buildHandler(config *Config) slog.Handler {
 		handler = slog.NewJSONHandler(writer, opts)
 	case FormatText:
 		opts := &slog.HandlerOptions{
-			Level:     config.Level.ToSlogLevel(),
+			Level:     config.leveler,
 			AddSource: config.ShowCaller,
 		}
 		if config.DisableTimestamp {
@@ -251,7 +277,7 @@ func buildHandler(config *Config) slog.Handler {
 		handler = &hookHandler{
 			handler: handler,
 			hooks:   append(getGlobalHooks(), config.Hooks...),
-			level:   config.Level,
+			leveler: config.leveler,
 		}
 	}
 
@@ -262,7 +288,7 @@ func buildHandler(config *Config) slog.Handler {
 func New(opts ...Option) *Logger {
 	// Create default config
 	config := &Config{
-		Level:           getDefaultLevel(),
+		leveler:         getDefaultLevel(),
 		Format:          getDefaultFormat(),
 		Writer:          os.Stderr,
 		TimestampFormat: time.RFC3339,
@@ -299,7 +325,7 @@ func New(opts ...Option) *Logger {
 
 	return &Logger{
 		slog:   slogLogger,
-		level:  config.Level,
+		level:  config.Level(),
 		format: config.Format,
 		writer: writer,
 		fields: config.DefaultFields,
@@ -333,7 +359,7 @@ func New(opts ...Option) *Logger {
 func NewSlogHandler(opts ...Option) slog.Handler {
 	// Create default config
 	config := &Config{
-		Level:           getDefaultLevel(),
+		leveler:         getDefaultLevel(),
 		Format:          getDefaultFormat(),
 		Writer:          os.Stderr,
 		TimestampFormat: time.RFC3339,
@@ -401,10 +427,11 @@ func (l *Logger) WithFields(args ...any) *Logger {
 }
 
 // IsLevelEnabled returns true if the given level is enabled.
+// This checks against the current log level, which may be dynamic.
 func (l *Logger) IsLevelEnabled(level Level) bool {
 	l.mu.RLock()
 	defer l.mu.RUnlock()
-	return level >= l.level
+	return level.Level() >= l.config.leveler.Level()
 }
 
 // log is the internal logging function that handles all levels.
@@ -506,7 +533,7 @@ func (mw *multiWriter) Write(p []byte) (n int, err error) {
 type hookHandler struct {
 	handler slog.Handler
 	hooks   []Hook
-	level   Level
+	leveler slog.Leveler
 }
 
 func (h *hookHandler) Enabled(ctx context.Context, level slog.Level) bool {
@@ -547,7 +574,7 @@ func (h *hookHandler) WithAttrs(attrs []slog.Attr) slog.Handler {
 	return &hookHandler{
 		handler: h.handler.WithAttrs(attrs),
 		hooks:   h.hooks,
-		level:   h.level,
+		leveler: h.leveler,
 	}
 }
 
@@ -555,6 +582,6 @@ func (h *hookHandler) WithGroup(name string) slog.Handler {
 	return &hookHandler{
 		handler: h.handler.WithGroup(name),
 		hooks:   h.hooks,
-		level:   h.level,
+		leveler: h.leveler,
 	}
 }

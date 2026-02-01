@@ -26,7 +26,7 @@ const (
 // consoleHandler is a custom slog.Handler for beautiful console output.
 type consoleHandler struct {
 	writer    io.Writer
-	level     slog.Level
+	leveler   slog.Leveler
 	useColors bool
 	config    *Config
 	attrs     []slog.Attr
@@ -37,7 +37,7 @@ type consoleHandler struct {
 func newConsoleHandler(w io.Writer, config *Config) *consoleHandler {
 	return &consoleHandler{
 		writer:    w,
-		level:     config.Level.ToSlogLevel(),
+		leveler:   config.leveler,
 		useColors: isTerminal(w),
 		config:    config,
 		attrs:     []slog.Attr{},
@@ -67,7 +67,7 @@ func isatty(fd int) bool {
 
 // Enabled reports whether the handler handles records at the given level.
 func (h *consoleHandler) Enabled(_ context.Context, level slog.Level) bool {
-	return level >= h.level
+	return level >= h.leveler.Level()
 }
 
 // Handle formats and writes a log record.
@@ -227,7 +227,7 @@ func (h *consoleHandler) WithAttrs(attrs []slog.Attr) slog.Handler {
 
 	return &consoleHandler{
 		writer:    h.writer,
-		level:     h.level,
+		leveler:   h.leveler,
 		useColors: h.useColors,
 		config:    h.config,
 		attrs:     newAttrs,
@@ -247,7 +247,7 @@ func (h *consoleHandler) WithGroup(name string) slog.Handler {
 
 	return &consoleHandler{
 		writer:    h.writer,
-		level:     h.level,
+		leveler:   h.leveler,
 		useColors: h.useColors,
 		config:    h.config,
 		attrs:     h.attrs,
