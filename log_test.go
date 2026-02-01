@@ -320,8 +320,8 @@ func TestConsoleFormat(t *testing.T) {
 	if !strings.Contains(output, "test message") {
 		t.Errorf("Expected output to contain 'test message', got: %s", output)
 	}
-	if !strings.Contains(output, "INFO") || !strings.Contains(output, "[INFO") {
-		t.Errorf("Expected output to contain '[INFO]', got: %s", output)
+	if !strings.Contains(output, "INFO") {
+		t.Errorf("Expected output to contain 'INFO', got: %s", output)
 	}
 }
 

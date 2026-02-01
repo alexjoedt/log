@@ -46,9 +46,9 @@ type Level int
 
 const (
 	// TRACE is for very detailed trace information
-	TRACE Level = iota - 8
+	TRACE Level = -8
 	// DEBUG is for debug information
-	DEBUG Level = iota - 4
+	DEBUG Level = -4
 	// INFO is for informational messages
 	INFO Level = 0
 	// WARN is for warning messages
