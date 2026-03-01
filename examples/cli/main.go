@@ -50,7 +50,6 @@ func main() {
 	// You can also create with custom options
 	fmt.Println("\n--- CLI Logger with Custom Options ---")
 	customLogger := log.NewCLILogger(
-		log.WithCLISymbols(false), // Disable symbols
 		log.WithLevel(log.DEBUG),
 	)
 	customLogger.Step("This step has no symbol")

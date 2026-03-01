@@ -61,7 +61,7 @@ func (h *cliHandler) Handle(_ context.Context, r slog.Record) error {
 	if h.useSymbols {
 		level := Level(r.Level)
 		symbol := h.getSymbol(level)
-		
+
 		if h.useColors {
 			color := h.getColor(level)
 			buf = append(buf, color...)
@@ -192,7 +192,7 @@ func NewCLILogger(opts ...Option) *Logger {
 		WithFormat(FormatCLI),
 		WithWriter(os.Stderr),
 		WithoutTimestamp(),
-		WithCLISymbols(true),
+		WithCLISymbols(),
 		WithLevel(INFO),
 	}
 
