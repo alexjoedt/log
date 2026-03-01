@@ -56,6 +56,9 @@ type Config struct {
 
 	// Hooks
 	Hooks []Hook
+
+	// CLI settings
+	CLISymbols bool // Enable symbol prefixes for CLI format
 }
 
 // Level returns the current minimum log level.
@@ -268,6 +271,8 @@ func buildHandler(config *Config) slog.Handler {
 		handler = slog.NewTextHandler(writer, opts)
 	case FormatConsole:
 		handler = newConsoleHandler(writer, config)
+	case FormatCLI:
+		handler = newCLIHandler(writer, config)
 	default:
 		handler = newConsoleHandler(writer, config)
 	}
@@ -493,6 +498,81 @@ func (l *Logger) Error(msg string, args ...any) {
 // Fatal logs at FATAL level and then exits.
 func (l *Logger) Fatal(msg string, args ...any) {
 	l.log(FATAL, msg, args...)
+}
+
+// Success logs a success message (CLI-friendly, message only).
+// This is intended for CLI applications to indicate successful operations.
+// When using FormatCLI, it renders with a green checkmark symbol.
+// For other formats, it logs at INFO level.
+//
+// Example:
+//
+//	logger.Success("Deployment completed successfully")
+func (l *Logger) Success(msg string) {
+	l.mu.RLock()
+	defer l.mu.RUnlock()
+
+	// For CLI format, write directly to handler for custom rendering
+	if l.format == FormatCLI {
+		if cliHandler, ok := l.slog.Handler().(*cliHandler); ok {
+			_ = cliHandler.handleCLISuccess(msg)
+			return
+		}
+		// If handler is wrapped, fall through to regular logging
+	}
+
+	// For other formats, just log at INFO level
+	l.log(INFO, msg)
+}
+
+// Failure logs a failure message (CLI-friendly, message only).
+// This is intended for CLI applications to indicate failed operations.
+// When using FormatCLI, it renders with a red X symbol.
+// For other formats, it logs at ERROR level.
+//
+// Example:
+//
+//	logger.Failure("Deployment failed")
+func (l *Logger) Failure(msg string) {
+	l.mu.RLock()
+	defer l.mu.RUnlock()
+
+	// For CLI format, write directly to handler for custom rendering
+	if l.format == FormatCLI {
+		if cliHandler, ok := l.slog.Handler().(*cliHandler); ok {
+			_ = cliHandler.handleCLIFailure(msg)
+			return
+		}
+		// If handler is wrapped, fall through to regular logging
+	}
+
+	// For other formats, just log at ERROR level
+	l.log(ERROR, msg)
+}
+
+// Step logs a step/progress message (CLI-friendly, message only).
+// This is intended for CLI applications to indicate progress or steps.
+// When using FormatCLI, it renders with a blue bullet symbol.
+// For other formats, it logs at INFO level.
+//
+// Example:
+//
+//	logger.Step("Building application...")
+func (l *Logger) Step(msg string) {
+	l.mu.RLock()
+	defer l.mu.RUnlock()
+
+	// For CLI format, write directly to handler for custom rendering
+	if l.format == FormatCLI {
+		if cliHandler, ok := l.slog.Handler().(*cliHandler); ok {
+			_ = cliHandler.handleCLIStep(msg)
+			return
+		}
+		// If handler is wrapped, fall through to regular logging
+	}
+
+	// For other formats, just log at INFO level
+	l.log(INFO, msg)
 }
 
 // Writer returns an io.Writer that writes to the logger at the given level.

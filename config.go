@@ -89,3 +89,12 @@ func FromEnv() *Logger {
 
 	return New(opts...)
 }
+
+// WithCLISymbols enables or disables symbol prefixes for CLI format output.
+// Symbols include ✓ for success, ✗ for failure, ⚠ for warnings, etc.
+// This option only affects FormatCLI.
+func WithCLISymbols() Option {
+	return func(c *Config) {
+		c.CLISymbols = true
+	}
+}

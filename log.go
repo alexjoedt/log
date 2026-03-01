@@ -101,6 +101,8 @@ const (
 	FormatJSON Format = "json"
 	// FormatText is plain key=value format
 	FormatText Format = "text"
+	// FormatCLI is clean CLI output with symbols, no timestamps or fields
+	FormatCLI Format = "cli"
 )
 
 var (
@@ -180,6 +182,21 @@ func Error(msg string, args ...any) {
 // Fatal logs at FATAL level with the default logger and then exits.
 func Fatal(msg string, args ...any) {
 	Default().Fatal(msg, args...)
+}
+
+// Success logs a success message with the default logger.
+func Success(msg string) {
+	Default().Success(msg)
+}
+
+// Failure logs a failure message with the default logger.
+func Failure(msg string) {
+	Default().Failure(msg)
+}
+
+// Step logs a step/progress message with the default logger.
+func Step(msg string) {
+	Default().Step(msg)
 }
 
 // IsTraceEnabled returns true if TRACE level is enabled.
