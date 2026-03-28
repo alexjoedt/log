@@ -341,6 +341,11 @@ func New(opts ...Option) *Logger {
 	}
 }
 
+// Deprecated: Use NewHandler instead.
+func NewSlogHandler(opts ...Option) slog.Handler {
+	return NewHandler(opts...)
+}
+
 // NewSlogHandler creates a fully-configured slog.Handler with the given options.
 // This allows using the package's enhanced features (rotation, sampling, console
 // formatting, hooks) while maintaining a pure slog-based workflow.
@@ -363,7 +368,7 @@ func New(opts ...Option) *Logger {
 //
 // Note: When using buffered or rotating writers, the caller is responsible for
 // managing writer lifecycle (flushing/closing) if needed.
-func NewSlogHandler(opts ...Option) slog.Handler {
+func NewHandler(opts ...Option) slog.Handler {
 	// Create default config
 	config := &Config{
 		leveler:         getDefaultLevel(),
