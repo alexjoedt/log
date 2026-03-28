@@ -101,7 +101,9 @@ const (
 	FormatJSON Format = "json"
 	// FormatText is plain key=value format
 	FormatText Format = "text"
-	// FormatCLI is clean CLI output with symbols, no timestamps or fields
+	// FormatCLI is clean CLI output with symbols and no timestamps.
+	// Structured key=value fields are appended after the message by default;
+	// use WithCLIFields(false) to suppress them.
 	FormatCLI Format = "cli"
 )
 

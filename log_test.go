@@ -828,6 +828,210 @@ func TestWithSlogLevel(t *testing.T) {
 	}
 }
 
+// Tests for the CLI handler field rendering.
+
+func TestCLIHandlerRendersFields(t *testing.T) {
+	buf := &bytes.Buffer{}
+	handler := NewSlogHandler(
+		WithFormat(FormatCLI),
+		WithWriter(buf),
+		WithCLISymbols(),
+		WithCLIFields(true),
+	)
+	logger := slog.New(handler)
+	logger.Info("received message", "msg", "hello", "count", 42)
+
+	output := buf.String()
+	if !strings.Contains(output, "received message") {
+		t.Errorf("expected message in output, got: %s", output)
+	}
+	if !strings.Contains(output, "msg=hello") {
+		t.Errorf("expected msg=hello in output, got: %s", output)
+	}
+	if !strings.Contains(output, "count=42") {
+		t.Errorf("expected count=42 in output, got: %s", output)
+	}
+}
+
+func TestCLIHandlerRendersFieldsViaLogger(t *testing.T) {
+	buf := &bytes.Buffer{}
+	logger := New(
+		WithFormat(FormatCLI),
+		WithWriter(buf),
+		WithCLISymbols(),
+		WithCLIFields(true),
+	)
+	logger.Info("processing", "user", "alice", "id", 7)
+
+	output := buf.String()
+	if !strings.Contains(output, "processing") {
+		t.Errorf("expected message in output, got: %s", output)
+	}
+	if !strings.Contains(output, "user=alice") {
+		t.Errorf("expected user=alice in output, got: %s", output)
+	}
+	if !strings.Contains(output, "id=7") {
+		t.Errorf("expected id=7 in output, got: %s", output)
+	}
+}
+
+func TestCLIHandlerWithAttrs(t *testing.T) {
+	buf := &bytes.Buffer{}
+	handler := NewSlogHandler(
+		WithFormat(FormatCLI),
+		WithWriter(buf),
+		WithCLIFields(true),
+	)
+	// WithAttrs simulates slog attaching persistent fields (e.g. via slog.New(handler).With(...))
+	logger := slog.New(handler).With("service", "api", "version", "2")
+	logger.Info("started")
+
+	output := buf.String()
+	if !strings.Contains(output, "service=api") {
+		t.Errorf("expected service=api in output, got: %s", output)
+	}
+	if !strings.Contains(output, "version=2") {
+		t.Errorf("expected version=2 in output, got: %s", output)
+	}
+}
+
+func TestCLIHandlerWithGroup(t *testing.T) {
+	buf := &bytes.Buffer{}
+	handler := NewSlogHandler(
+		WithFormat(FormatCLI),
+		WithWriter(buf),
+		WithCLIFields(true),
+	)
+	logger := slog.New(handler).WithGroup("req")
+	logger.Info("handled", "method", "GET", "path", "/health")
+
+	output := buf.String()
+	if !strings.Contains(output, "req.method=GET") {
+		t.Errorf("expected req.method=GET in output, got: %s", output)
+	}
+	if !strings.Contains(output, "req.path=/health") {
+		t.Errorf("expected req.path=/health in output, got: %s", output)
+	}
+}
+
+func TestCLIHandlerNoFieldsNoTrailingSpace(t *testing.T) {
+	buf := &bytes.Buffer{}
+	handler := NewSlogHandler(
+		WithFormat(FormatCLI),
+		WithWriter(buf),
+		WithCLISymbols(),
+	)
+	logger := slog.New(handler)
+	logger.Info("simple message")
+
+	output := buf.String()
+	// Output should end with "\n", not have a trailing space before newline.
+	if strings.Contains(output, " \n") {
+		t.Errorf("unexpected trailing space before newline: %q", output)
+	}
+}
+
+func TestCLIHandlerLevelFiltering(t *testing.T) {
+	buf := &bytes.Buffer{}
+	handler := NewSlogHandler(
+		WithFormat(FormatCLI),
+		WithWriter(buf),
+		WithLevel(WARN),
+	)
+	logger := slog.New(handler)
+	logger.Info("should be filtered", "key", "value")
+	logger.Warn("should appear", "key", "value")
+
+	output := buf.String()
+	if strings.Contains(output, "should be filtered") {
+		t.Errorf("INFO message should be filtered at WARN level, got: %s", output)
+	}
+	if !strings.Contains(output, "should appear") {
+		t.Errorf("WARN message should appear, got: %s", output)
+	}
+}
+
+func TestWithCLIFieldsEnabled(t *testing.T) {
+	buf := &bytes.Buffer{}
+	logger := New(
+		WithFormat(FormatCLI),
+		WithWriter(buf),
+		WithCLIFields(true),
+	)
+	logger.Info("hello", "user", "alice", "count", 3)
+
+	output := buf.String()
+	if !strings.Contains(output, "hello") {
+		t.Errorf("expected message in output, got: %s", output)
+	}
+	if !strings.Contains(output, "user=alice") {
+		t.Errorf("expected user=alice in output, got: %s", output)
+	}
+	if !strings.Contains(output, "count=3") {
+		t.Errorf("expected count=3 in output, got: %s", output)
+	}
+}
+
+func TestWithCLIFieldsDisabled(t *testing.T) {
+	buf := &bytes.Buffer{}
+	logger := New(
+		WithFormat(FormatCLI),
+		WithWriter(buf),
+		WithCLIFields(false),
+	)
+	logger.Info("hello", "user", "alice", "count", 3)
+
+	output := buf.String()
+	if !strings.Contains(output, "hello") {
+		t.Errorf("expected message in output, got: %s", output)
+	}
+	if strings.Contains(output, "user=alice") {
+		t.Errorf("fields should be suppressed, got: %s", output)
+	}
+	if strings.Contains(output, "count=3") {
+		t.Errorf("fields should be suppressed, got: %s", output)
+	}
+}
+
+func TestWithCLIFieldsDisabledSuppressesWithAttrs(t *testing.T) {
+	buf := &bytes.Buffer{}
+	handler := NewSlogHandler(
+		WithFormat(FormatCLI),
+		WithWriter(buf),
+		WithCLIFields(false),
+	)
+	// persistent fields via slog.Logger.With should also be suppressed
+	logger := slog.New(handler).With("service", "api")
+	logger.Info("started")
+
+	output := buf.String()
+	if strings.Contains(output, "service=api") {
+		t.Errorf("persistent fields should be suppressed when CLIFields=false, got: %s", output)
+	}
+}
+
+func TestNewCLILoggerDefaultsFieldsOn(t *testing.T) {
+	buf := &bytes.Buffer{}
+	logger := NewCLILogger(WithWriter(buf))
+	logger.Info("hello", "key", "val")
+
+	output := buf.String()
+	if !strings.Contains(output, "key=val") {
+		t.Errorf("NewCLILogger should render fields by default, got: %s", output)
+	}
+}
+
+func TestNewCLILoggerFieldsOptOut(t *testing.T) {
+	buf := &bytes.Buffer{}
+	logger := NewCLILogger(WithWriter(buf), WithCLIFields(false))
+	logger.Info("hello", "key", "val")
+
+	output := buf.String()
+	if strings.Contains(output, "key=val") {
+		t.Errorf("expected fields suppressed with WithCLIFields(false), got: %s", output)
+	}
+}
+
 func TestDynamicLogLevel(t *testing.T) {
 	buf := &bytes.Buffer{}
 
