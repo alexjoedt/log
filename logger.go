@@ -59,7 +59,7 @@ type Config struct {
 
 	// CLI settings
 	CLISymbols bool // Enable symbol prefixes for CLI format
-	CLIFields  bool // Render key=value fields in CLI format (default true)
+	CLIFields  bool // Render key=value fields in CLI format (default: true for FormatCLI)
 }
 
 // Level returns the current minimum log level.

@@ -102,7 +102,7 @@ func WithCLISymbols() Option {
 // WithCLIFields controls whether structured key=value fields are appended to
 // log lines when using FormatCLI. Pass false to suppress all fields and render
 // only the message (the original minimal CLI behaviour).
-// Defaults to true when using NewCLILogger.
+// Defaults to true for loggers using FormatCLI unless explicitly disabled.
 func WithCLIFields(enabled bool) Option {
 	return func(c *Config) {
 		c.CLIFields = enabled
