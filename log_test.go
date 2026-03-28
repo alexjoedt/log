@@ -836,6 +836,7 @@ func TestCLIHandlerRendersFields(t *testing.T) {
 		WithFormat(FormatCLI),
 		WithWriter(buf),
 		WithCLISymbols(),
+		WithCLIFields(true),
 	)
 	logger := slog.New(handler)
 	logger.Info("received message", "msg", "hello", "count", 42)
@@ -858,6 +859,7 @@ func TestCLIHandlerRendersFieldsViaLogger(t *testing.T) {
 		WithFormat(FormatCLI),
 		WithWriter(buf),
 		WithCLISymbols(),
+		WithCLIFields(true),
 	)
 	logger.Info("processing", "user", "alice", "id", 7)
 
@@ -878,6 +880,7 @@ func TestCLIHandlerWithAttrs(t *testing.T) {
 	handler := NewSlogHandler(
 		WithFormat(FormatCLI),
 		WithWriter(buf),
+		WithCLIFields(true),
 	)
 	// WithAttrs simulates slog attaching persistent fields (e.g. via slog.New(handler).With(...))
 	logger := slog.New(handler).With("service", "api", "version", "2")
@@ -897,6 +900,7 @@ func TestCLIHandlerWithGroup(t *testing.T) {
 	handler := NewSlogHandler(
 		WithFormat(FormatCLI),
 		WithWriter(buf),
+		WithCLIFields(true),
 	)
 	logger := slog.New(handler).WithGroup("req")
 	logger.Info("handled", "method", "GET", "path", "/health")
