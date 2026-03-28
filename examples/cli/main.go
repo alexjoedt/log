@@ -13,7 +13,7 @@ func main() {
 	// - Writes to stderr
 	// - No timestamps
 	// - Symbol prefixes enabled
-	// - Clean message-only output
+	// - Structured key=value fields appended after the message (use WithCLIFields(false) to suppress)
 	logger := log.NewCLILogger()
 
 	// Demonstrate different message types
