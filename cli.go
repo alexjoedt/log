@@ -85,14 +85,24 @@ func (h *cliHandler) Handle(_ context.Context, r slog.Record) error {
 	if h.useFields {
 		// Persistent attributes (added via WithAttrs)
 		for _, a := range h.attrs {
+			pre := len(buf)
 			buf = append(buf, ' ')
-			buf = h.appendAttr(buf, a, h.groups)
+			var wrote bool
+			buf, wrote = h.appendAttr(buf, a, h.groups)
+			if !wrote {
+				buf = buf[:pre]
+			}
 		}
 
 		// Per-record attributes
 		r.Attrs(func(a slog.Attr) bool {
+			pre := len(buf)
 			buf = append(buf, ' ')
-			buf = h.appendAttr(buf, a, h.groups)
+			var wrote bool
+			buf, wrote = h.appendAttr(buf, a, h.groups)
+			if !wrote {
+				buf = buf[:pre]
+			}
 			return true
 		})
 	}
@@ -107,7 +117,9 @@ func (h *cliHandler) Handle(_ context.Context, r slog.Record) error {
 
 // appendAttr appends a single slog.Attr as key=value to buf.
 // groups is the current group prefix stack.
-func (h *cliHandler) appendAttr(buf []byte, a slog.Attr, groups []string) []byte {
+// It returns the updated buffer and whether any content was written.
+// Callers must add a separator (space) only when this returns true.
+func (h *cliHandler) appendAttr(buf []byte, a slog.Attr, groups []string) ([]byte, bool) {
 	a.Value = a.Value.Resolve()
 
 	if a.Value.Kind() == slog.KindGroup {
@@ -116,11 +128,19 @@ func (h *cliHandler) appendAttr(buf []byte, a slog.Attr, groups []string) []byte
 		if group != "" {
 			newGroups = append(newGroups, group)
 		}
+		n := len(buf)
 		for _, ga := range a.Value.Group() {
-			buf = append(buf, ' ')
-			buf = h.appendAttr(buf, ga, newGroups)
+			attrStart := len(buf)
+			if len(buf) > n {
+				buf = append(buf, ' ')
+			}
+			var wrote bool
+			buf, wrote = h.appendAttr(buf, ga, newGroups)
+			if !wrote {
+				buf = buf[:attrStart]
+			}
 		}
-		return buf
+		return buf, len(buf) > n
 	}
 
 	// Build the full key with group prefix
@@ -138,7 +158,7 @@ func (h *cliHandler) appendAttr(buf []byte, a slog.Attr, groups []string) []byte
 	}
 	buf = append(buf, '=')
 	buf = h.appendValue(buf, a.Value)
-	return buf
+	return buf, true
 }
 
 // appendValue formats a slog.Value into buf.
