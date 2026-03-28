@@ -59,6 +59,7 @@ type Config struct {
 
 	// CLI settings
 	CLISymbols bool // Enable symbol prefixes for CLI format
+	CLIFields  bool // Render key=value fields in CLI format (default true)
 }
 
 // Level returns the current minimum log level.
@@ -300,6 +301,7 @@ func New(opts ...Option) *Logger {
 		CallerSkip:      2,
 		DefaultFields:   []any{},
 		Hooks:           []Hook{},
+		CLIFields:       true,
 	}
 
 	// Apply options
@@ -371,6 +373,7 @@ func NewSlogHandler(opts ...Option) slog.Handler {
 		CallerSkip:      2,
 		DefaultFields:   []any{},
 		Hooks:           []Hook{},
+		CLIFields:       true,
 	}
 
 	// Apply options

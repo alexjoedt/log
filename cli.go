@@ -2,9 +2,13 @@ package log
 
 import (
 	"context"
+	"fmt"
 	"io"
 	"log/slog"
 	"os"
+	"strconv"
+	"strings"
+	"time"
 )
 
 // CLI symbols for different log levels
@@ -22,12 +26,14 @@ const (
 )
 
 // cliHandler is a custom slog.Handler optimized for CLI output.
-// It renders clean, symbol-prefixed messages without timestamps or structured fields.
+// It renders symbol-prefixed messages. Key=value fields are appended when
+// useFields is true (controlled via WithCLIFields).
 type cliHandler struct {
 	writer     io.Writer
 	leveler    slog.Leveler
 	useColors  bool
 	useSymbols bool
+	useFields  bool
 	config     *Config
 	attrs      []slog.Attr
 	groups     []string
@@ -40,6 +46,7 @@ func newCLIHandler(w io.Writer, config *Config) *cliHandler {
 		leveler:    config.leveler,
 		useColors:  isTerminal(w),
 		useSymbols: config.CLISymbols,
+		useFields:  config.CLIFields,
 		config:     config,
 		attrs:      []slog.Attr{},
 		groups:     []string{},
@@ -52,8 +59,7 @@ func (h *cliHandler) Enabled(_ context.Context, level slog.Level) bool {
 }
 
 // Handle formats and writes a log record in CLI style.
-// Format: [symbol] message
-// Fields and structured data are intentionally ignored for clean CLI output.
+// Format: [symbol] message key=value key=value …
 func (h *cliHandler) Handle(_ context.Context, r slog.Record) error {
 	buf := make([]byte, 0, 256)
 
@@ -73,8 +79,23 @@ func (h *cliHandler) Handle(_ context.Context, r slog.Record) error {
 		buf = append(buf, ' ')
 	}
 
-	// Message only - no fields rendered
+	// Message
 	buf = append(buf, r.Message...)
+
+	if h.useFields {
+		// Persistent attributes (added via WithAttrs)
+		for _, a := range h.attrs {
+			buf = append(buf, ' ')
+			buf = h.appendAttr(buf, a, h.groups)
+		}
+
+		// Per-record attributes
+		r.Attrs(func(a slog.Attr) bool {
+			buf = append(buf, ' ')
+			buf = h.appendAttr(buf, a, h.groups)
+			return true
+		})
+	}
 
 	// Add newline
 	buf = append(buf, '\n')
@@ -82,6 +103,64 @@ func (h *cliHandler) Handle(_ context.Context, r slog.Record) error {
 	// Write
 	_, err := h.writer.Write(buf)
 	return err
+}
+
+// appendAttr appends a single slog.Attr as key=value to buf.
+// groups is the current group prefix stack.
+func (h *cliHandler) appendAttr(buf []byte, a slog.Attr, groups []string) []byte {
+	a.Value = a.Value.Resolve()
+
+	if a.Value.Kind() == slog.KindGroup {
+		group := a.Key
+		newGroups := groups
+		if group != "" {
+			newGroups = append(newGroups, group)
+		}
+		for _, ga := range a.Value.Group() {
+			buf = append(buf, ' ')
+			buf = h.appendAttr(buf, ga, newGroups)
+		}
+		return buf
+	}
+
+	// Build the full key with group prefix
+	key := a.Key
+	if len(groups) > 0 {
+		key = strings.Join(groups, ".") + "." + key
+	}
+
+	if h.useColors {
+		buf = append(buf, colorCyan...)
+	}
+	buf = append(buf, key...)
+	if h.useColors {
+		buf = append(buf, colorReset...)
+	}
+	buf = append(buf, '=')
+	buf = h.appendValue(buf, a.Value)
+	return buf
+}
+
+// appendValue formats a slog.Value into buf.
+func (h *cliHandler) appendValue(buf []byte, v slog.Value) []byte {
+	switch v.Kind() {
+	case slog.KindString:
+		return append(buf, v.String()...)
+	case slog.KindInt64:
+		return strconv.AppendInt(buf, v.Int64(), 10)
+	case slog.KindUint64:
+		return strconv.AppendUint(buf, v.Uint64(), 10)
+	case slog.KindFloat64:
+		return strconv.AppendFloat(buf, v.Float64(), 'f', -1, 64)
+	case slog.KindBool:
+		return strconv.AppendBool(buf, v.Bool())
+	case slog.KindTime:
+		return append(buf, v.Time().Format(time.RFC3339)...)
+	case slog.KindDuration:
+		return append(buf, v.Duration().String()...)
+	default:
+		return append(buf, fmt.Sprint(v.Any())...)
+	}
 }
 
 // getSymbol returns the appropriate symbol for a log level.
@@ -124,13 +203,7 @@ func (h *cliHandler) getColor(level Level) string {
 	}
 }
 
-// getSuccessColor returns green for success messages.
-func (h *cliHandler) getSuccessColor() string {
-	return colorGreen
-}
-
 // WithAttrs returns a new handler with additional attributes.
-// Note: CLI handler ignores attributes for clean output.
 func (h *cliHandler) WithAttrs(attrs []slog.Attr) slog.Handler {
 	newAttrs := make([]slog.Attr, len(h.attrs)+len(attrs))
 	copy(newAttrs, h.attrs)
@@ -141,6 +214,7 @@ func (h *cliHandler) WithAttrs(attrs []slog.Attr) slog.Handler {
 		leveler:    h.leveler,
 		useColors:  h.useColors,
 		useSymbols: h.useSymbols,
+		useFields:  h.useFields,
 		config:     h.config,
 		attrs:      newAttrs,
 		groups:     h.groups,
@@ -148,7 +222,6 @@ func (h *cliHandler) WithAttrs(attrs []slog.Attr) slog.Handler {
 }
 
 // WithGroup returns a new handler with a group name.
-// Note: CLI handler ignores groups for clean output.
 func (h *cliHandler) WithGroup(name string) slog.Handler {
 	if name == "" {
 		return h
@@ -163,6 +236,7 @@ func (h *cliHandler) WithGroup(name string) slog.Handler {
 		leveler:    h.leveler,
 		useColors:  h.useColors,
 		useSymbols: h.useSymbols,
+		useFields:  h.useFields,
 		config:     h.config,
 		attrs:      h.attrs,
 		groups:     newGroups,
@@ -170,21 +244,29 @@ func (h *cliHandler) WithGroup(name string) slog.Handler {
 }
 
 // NewCLILogger creates a logger optimized for CLI applications.
-// It uses stderr by default, disables timestamps, and renders clean
-// symbol-prefixed messages without structured fields.
+// It writes to stderr, disables timestamps, enables symbol prefixes, and
+// appends structured key=value fields after the message by default.
+//
+// Defaults:
+//   - Format:  FormatCLI
+//   - Writer:  os.Stderr
+//   - Level:   INFO
+//   - Symbols: enabled (WithCLISymbols)
+//   - Fields:  enabled (WithCLIFields(true))
 //
 // Example:
 //
 //	logger := log.NewCLILogger()
 //	logger.Step("Building application")
+//	logger.Info("processed", "count", 42)
 //	logger.Success("Build complete")
 //	logger.Failure("Push failed")
 //
-// Options can be provided to customize behavior:
+// Options can be provided to override defaults:
 //
 //	logger := log.NewCLILogger(
 //	    log.WithLevel(log.DEBUG),
-//	    log.WithCLISymbols(false), // disable symbols
+//	    log.WithCLIFields(false), // suppress key=value fields
 //	)
 func NewCLILogger(opts ...Option) *Logger {
 	// Set CLI-friendly defaults
@@ -193,6 +275,7 @@ func NewCLILogger(opts ...Option) *Logger {
 		WithWriter(os.Stderr),
 		WithoutTimestamp(),
 		WithCLISymbols(),
+		WithCLIFields(true),
 		WithLevel(INFO),
 	}
 
